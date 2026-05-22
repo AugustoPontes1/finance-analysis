@@ -1,0 +1,28 @@
+# Git
+.git
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Python & Environment
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.venv
+venv
+env
+.env
+
+# Local Databases & Media
+db.sqlite3
+media/
+static/
+
+# Documentation & Logs
+README.md
+*.log
+docs/

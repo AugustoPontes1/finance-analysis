@@ -1,0 +1,25 @@
+# Django / Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+env/
+venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.venv
+/static/          # Only if you use collectstatic locally
+/media/           # User-uploaded files should never be in Git
+
+# Database
+db.sqlite3
+db.sqlite3-journal
+
+# Environments / Secrets
+.env
+!.env.sample      # Keep sample file to show required variables
+
+# OS & IDEs
+.DS_Store
+.vscode/
+.idea/
