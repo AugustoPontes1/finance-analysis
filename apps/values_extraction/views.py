@@ -204,6 +204,51 @@ class DocumentExctractionAPIView(ViewSet):
                 {"error": "Document not fiound"}
             )
 
-    @action(methods=['put'])
-    def update_file(self, request):
-        ...
+    @action(detail=True, methods=['put'])
+    def update_file(self, request, pk=None):
+        """ 
+        Update the file on the DB and keeping the same ID
+        """
+        try:
+            doc = DocumentModel.objects.get(pk=pk)
+            
+            new_file = request.FILES.get('file')
+            new_file_name = request.data.get('file_name')
+            new_file_type = request.data.get('file_type')
+            
+            if not new_file and not new_file_name and not new_file_type:
+                return Response(
+                    {"error": "Must provide 'file', 'file_name' or 'file_type'"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            if new_file:
+                seaweed_service.update_file(
+                    str(doc.id),
+                    new_file,
+                    new_file_name or new_file.name
+                )
+
+                doc.file_type = new_file_type or new_file.name.split('.')[-1].lower()
+                doc.file_size = new_file.size
+                doc.file_name = new_file_name or new_file.name
+            
+            if new_file_name and not new_file:
+                doc.file_name = new_file_name
+            
+            if new_file_type and not new_file:
+                doc.file_type = new_file_type
+            
+            doc.save()
+            
+            serializer = DocumentSerializer(doc)
+            return Response(
+                {"status": "File updated successfully", "data": serializer.data},
+                status=status.HTTP_200_OK
+            )
+
+        except DocumentModel.DoesNotExist:
+            return Response(
+                {"error": "Document not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
