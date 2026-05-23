@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from values_extraction.models import DocumentModel
+from apps.values_extraction.models import DocumentModel
 
 
 class DocumentSerializer(serializers.ModelSerializer):

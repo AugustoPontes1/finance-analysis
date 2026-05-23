@@ -6,9 +6,9 @@ from rest_framework.viewsets import ViewSet
 import mimetypes
 from io import BytesIO
 
-from serializers import DocumentSerializer
-from models import DocumentModel
-from seaweed_service.seaweed_service import SeaweedFSService
+from apps.values_extraction.serializers import DocumentSerializer
+from apps.values_extraction.models import DocumentModel
+from apps.seaweed_service.seaweed_service import SeaweedFSService
 
 seaweed_service = SeaweedFSService()
 
