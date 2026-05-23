@@ -120,3 +120,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+
+# Seaweedconfigs
+SEAWEEDFS_MASTER_URL=os.getenv('SEAWEEDFS_MASTER_URL')
+SEAWEEDFS_VOLUME_URL=os.getenv('SEAWEEDFS_VOLUME_URL')
