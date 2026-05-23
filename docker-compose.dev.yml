@@ -1,0 +1,116 @@
+version: '3.9'
+
+
+services:
+  # ========== DJANGO APP ==========
+  django:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      args:
+        APP_PORT: ${DJANGO_APP_PORT}
+    container_name: finance-analysis-django
+    volumes:
+      - .:/app
+      - /app/venv
+    ports:
+      - "${DJANGO_APP_PORT}:${DJANGO_APP_PORT}"
+    environment:
+      - PORT=${DJANGO_APP_PORT}
+      - DJANGO_APP_PORT=${DJANGO_APP_PORT}
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DEBUG=True
+      - ALLOWED_HOSTS=localhost,127.0.0.1,django
+      - SEAWEEDFS_MASTER_URL=http://seaweed-master:9333
+      - SEAWEEDFS_VOLUME_URL=http://seaweed-volume:8080
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/finance_analysis
+    depends_on:
+      postgres:
+        condition: service_healthy
+      seaweed-master:
+        condition: service_healthy
+      seaweed-volume:
+        condition: service_healthy
+    networks:
+      - finance-network-dev
+    stdin_open: true
+    tty: true
+
+  # ========== POSTGRESQL DATABASE ==========
+  postgres:
+    image: postgres:15-alpine
+    container_name: finance-analysis-postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=finance_analysis
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    networks:
+      - finance-network-dev
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ========== SEAWEEDFS MASTER ==========
+  seaweed-master:
+    image: chrislusf/seaweedfs:latest
+    container_name: finance-analysis-seaweed-master
+    ports:
+      - "9333:9333"
+    command: >
+      master
+      -ip=seaweed-master
+      -port=9333
+      -mdir=/data/seaweed-master
+    volumes:
+      - seaweed_master_data:/data/seaweed-master
+    networks:
+      - finance-network-dev
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9333/dir/status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ========== SEAWEEDFS VOLUME ==========
+  seaweed-volume:
+    image: chrislusf/seaweedfs:latest
+    container_name: finance-analysis-seaweed-volume
+    ports:
+      - "8080:8080"
+      - "18080:18080"
+    command: >
+      volume
+      -ip=seaweed-volume
+      -port=8080
+      -master=seaweed-master:9333
+      -dir=/data/seaweed-volume
+      -mserver=seaweed-master:9333
+    volumes:
+      - seaweed_volume_data:/data/seaweed-volume
+    depends_on:
+      - seaweed-master
+    networks:
+      - finance-network-dev
+    environment:
+      - WEED_MASTER=seaweed-master:9333
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  seaweed_master_data:
+  seaweed_volume_data:
+
+networks:
+  finance-network-dev:
+    driver: bridge

@@ -1,0 +1,39 @@
+# Slim version of the latest stable Python
+FROM python:3.13-slim
+
+# Set environment variables
+# Prevents Python from writing .pyc files
+ENV PYTHONDONTWRITEBYTECODE=1
+# Ensures console output is sent straight to terminal (no buffering)
+ENV PYTHONUNBUFFERED=1
+
+# Set work directory
+WORKDIR /app
+
+# Install system dependencies (e.g., for Postgres or image processing)
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libpq-dev \
+    netcat-traditional \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+RUN pip install --upgrade pip
+COPY requirements.txt /app/
+RUN pip install -r requirements.txt
+
+# Copy project files
+COPY . /app/
+
+# Copy entrypoint script
+COPY entrypoint.sh /app/
+RUN chmod +x /app/entrypoint.sh
+
+# Port for Django dev server
+ENV DJANGO_APP_PORT=8080
+
+ENV PORT=${DJANGO_APP_PORT}
+EXPOSE $DJANGO_APP_PORT
+
+# Entrypoint that runs migrations before starting the server
+ENTRYPOINT ["/app/entrypoint.sh"]
