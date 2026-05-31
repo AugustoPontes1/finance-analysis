@@ -1,5 +1,15 @@
 .PHONY: help install-compose up down logs migrate test clean shell bash psql
 
+# Override manual:
+# make up MAC=true
+MAC ?= false
+
+ifeq ($(MAC),true)
+	COMPOSE := docker-compose
+else
+	COMPOSE := docker compose
+endif
+
 help:
 	@echo "Finance Analysis - Development Commands"
 	@echo ""
@@ -36,11 +46,12 @@ install-compose:
 
 build:
 	@echo "Building Docker images..."
-	docker compose -f docker-compose.dev.yml build
+	$(COMPOSE) -f docker-compose.dev.yml build
 
 up:
 	@echo "Starting services..."
-	docker compose -f docker-compose.dev.yml up -d
+	@mkdir -p ./data/seaweed-master ./data/seaweed-volume
+	$(COMPOSE) -f docker-compose.dev.yml up -d
 	@echo ""
 	@echo "✓ Services started!"
 	@echo "  Django: http://localhost:$${APP_PORT:-8000}"
@@ -51,40 +62,40 @@ up:
 
 down:
 	@echo "Stopping services..."
-	docker compose -f docker-compose.dev.yml down
+	$(COMPOSE) -f docker-compose.dev.yml down
 	@echo "✓ Services stopped"
 
 logs:
-	docker compose -f docker-compose.dev.yml logs -f django
+	$(COMPOSE) -f docker-compose.dev.yml logs -f django
 
 migrate:
 	@echo "Running migrations..."
-	docker compose -f docker-compose.dev.yml exec django python manage.py migrate
+	$(COMPOSE) -f docker-compose.dev.yml exec django python manage.py migrate
 	@echo "✓ Migrations completed"
 
 shell:
-	docker compose -f docker-compose.dev.yml exec django python manage.py shell
+	$(COMPOSE) -f docker-compose.dev.yml exec django python manage.py shell
 
 bash:
-	docker compose -f docker-compose.dev.yml exec django /bin/bash
+	$(COMPOSE) -f docker-compose.dev.yml exec django /bin/bash
 
 psql:
-	docker compose -f docker-compose.dev.yml exec postgres psql -U postgres -d finance_analysis
+	$(COMPOSE) -f docker-compose.dev.yml exec postgres psql -U postgres -d finance_analysis
 
 test:
 	@echo "Running tests..."
-	docker compose -f docker-compose.dev.yml exec django python manage.py test
+	$(COMPOSE) -f docker-compose.dev.yml exec django python manage.py test
 	@echo "✓ Tests completed"
 
 test-coverage:
 	@echo "Running tests with coverage..."
-	docker compose -f docker-compose.dev.yml exec django coverage run --source='.' manage.py test
-	docker compose -f docker-compose.dev.yml exec django coverage report
+	$(COMPOSE) -f docker-compose.dev.yml exec django coverage run --source='.' manage.py test
+	$(COMPOSE) -f docker-compose.dev.yml exec django coverage report
 	@echo "✓ Coverage report generated"
 
-clean:
+clean:f
 	@echo "Cleaning up (stopping containers)..."
-	docker compose -f docker-compose.dev.yml down
+	$(COMPOSE) -f docker-compose.dev.yml down
 	@echo "✓ Cleaned up"
 
 clean-all:
@@ -92,7 +103,7 @@ clean-all:
 	@read -p "Continue? [y/N] " -n 1 -r; \
 	echo; \
 	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
-		docker compose -f docker-compose.dev.yml down -v --rmi all; \
+		$(COMPOSE) -f docker-compose.dev.yml down -v --rmi all; \
 		echo "✓ All cleaned up"; \
 	else \
 		echo "Cancelled"; \
