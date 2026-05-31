@@ -25,6 +25,7 @@ services:
       - SEAWEEDFS_MASTER_URL=http://seaweed-master:9333
       - SEAWEEDFS_VOLUME_URL=http://seaweed-volume:8080
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/finance_analysis
+      - SECRET_KEY=${SECRET_KEY}
     depends_on:
       postgres:
         condition: service_healthy
@@ -61,15 +62,17 @@ services:
   seaweed-master:
     image: chrislusf/seaweedfs:latest
     container_name: finance-analysis-seaweed-master
+    user: root
     ports:
       - "9333:9333"
     command: >
       master
       -ip=seaweed-master
+      -ip.bind=0.0.0.0
       -port=9333
       -mdir=/data/seaweed-master
     volumes:
-      - seaweed_master_data:/data/seaweed-master
+      - ./data/seaweed-master:/data/seaweed-master
     networks:
       - finance-network-dev
     healthcheck:
@@ -82,18 +85,20 @@ services:
   seaweed-volume:
     image: chrislusf/seaweedfs:latest
     container_name: finance-analysis-seaweed-volume
+    user: root
     ports:
       - "8080:8080"
       - "18080:18080"
     command: >
       volume
       -ip=seaweed-volume
+      -ip.bind=0.0.0.0
       -port=8080
       -master=seaweed-master:9333
       -dir=/data/seaweed-volume
       -mserver=seaweed-master:9333
     volumes:
-      - seaweed_volume_data:/data/seaweed-volume
+      - ./data/seaweed-volume:/data/seaweed-volume
     depends_on:
       - seaweed-master
     networks:
@@ -101,15 +106,14 @@ services:
     environment:
       - WEED_MASTER=seaweed-master:9333
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      test: ["CMD", "curl", "-f", "http://localhost:8080/status"]
+      interval: 45s
+      timeout: 35s
+      retries: 10
+      start_period: 50s
 
 volumes:
   postgres_data:
-  seaweed_master_data:
-  seaweed_volume_data:
 
 networks:
   finance-network-dev:
