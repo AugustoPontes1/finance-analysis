@@ -11,7 +11,7 @@ class SeaweedFSService:
     """
     def __init__(self):
         self.master_url = settings.SEAWEEDFS_MASTER_URL
-        self.volume_url = settings.SEAWEED_VOLUME_URL
+        self.volume_url = settings.SEAWEEDFS_VOLUME_URL
     
     def upload_file(self, file_obj, filename):
         """ 
