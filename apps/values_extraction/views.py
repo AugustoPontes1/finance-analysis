@@ -120,7 +120,7 @@ class DocumentExctractionAPIView(ViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-    @action(methods=['post'])
+    @action(detail=True, methods=['post'])
     def select_file_params(self, request):
         """ 
         Confirm upload with custom params
