@@ -23,3 +23,6 @@ db.sqlite3-journal
 .DS_Store
 .vscode/
 .idea/
+
+# Local SeaweedFS data (bind mounts)
+data/
