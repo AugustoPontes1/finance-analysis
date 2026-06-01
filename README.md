@@ -53,8 +53,10 @@ finance-analysis/
 
 ### Prerequisites
 
-- Python 3.13+
-- Docker & Docker Compose
+- [Docker & Docker Compose](https://docs.docker.com/get-docker/)
+- [Make](https://www.gnu.org/software/make/) — pre-installed on macOS/Linux; on Windows use WSL
+- [Git](https://git-scm.com/)
+- Python 3.13+ — only required for local development outside Docker
 
 ### Setup
 
