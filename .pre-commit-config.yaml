@@ -1,0 +1,32 @@
+repos:
+  # ── File hygiene & syntax ──────────────────────────────────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-ast            # Python syntax validation
+      - id: check-merge-conflict
+      - id: debug-statements     # catches leftover pdb / print debug calls
+      - id: check-added-large-files
+        args: ["--maxkb=1024"]
+
+  # ── Linter + formatter (replaces flake8, isort, pyupgrade, black) ─────────
+  # ruff check --fix  → auto-fixes every fixable lint violation
+  # ruff-format       → auto-formats code style
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.5.0
+    hooks:
+      - id: ruff
+        args: ["--fix"]
+      - id: ruff-format
+
+  # ── Security scanner ───────────────────────────────────────────────────────
+  # -ll  → report only medium-severity and above (reduces noise)
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.9
+    hooks:
+      - id: bandit
+        args: ["-ll"]
+        exclude: "^(tests/|.*/tests\\.py)"
