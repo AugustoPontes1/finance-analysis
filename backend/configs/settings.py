@@ -40,8 +40,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     # Apps
-    "apps.values_extraction",
-    "apps.values_ai_extraction"
+    "backend.apps.values_extraction",
+    "backend.apps.values_ai_extraction"
 ]
 
 MIDDLEWARE = [
@@ -127,3 +127,8 @@ STATIC_URL = 'static/'
 # Seaweedconfigs
 SEAWEEDFS_MASTER_URL=os.getenv('SEAWEEDFS_MASTER_URL')
 SEAWEEDFS_VOLUME_URL=os.getenv('SEAWEEDFS_VOLUME_URL')
+
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [],
+    "DEFAULT_PERMISSION_CLASSES": [],
+}
