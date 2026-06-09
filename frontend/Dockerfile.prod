@@ -1,0 +1,17 @@
+FROM python:3.13-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+RUN pip install --upgrade pip
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+# Code is baked into the image (no volume mount)
+COPY . .
+
+EXPOSE 8503
+
+CMD ["streamlit", "run", "frontend/ui/ui.py", "--server.port=8503", "--server.address=0.0.0.0"]
