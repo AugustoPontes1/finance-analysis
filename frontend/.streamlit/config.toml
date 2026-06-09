@@ -1,0 +1,7 @@
+[server]
+port = 8501
+address = "0.0.0.0"
+headless = true # disables "Deploy" button, required in containers
+
+[browser]
+gatherUsageStats = false # no telemetry sent to Streamlit
