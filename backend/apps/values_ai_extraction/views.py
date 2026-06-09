@@ -8,10 +8,10 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from backend.apps.values_extraction.models import DocumentModel
-from backend.apps.seaweed_service import SeaweedFSService
+from backend.apps.seaweed_service import seaweed_service
 from backend.apps.values_ai_extraction.llm.factory import get_llm_service
 
-seaweed_service = SeaweedFSService()
+seaweed_service_inst = seaweed_service.SeaweedFSService()
 
 
 def _extract_text(file_bytes: bytes, file_type: str) -> str:
@@ -37,7 +37,7 @@ class AIExtractionAPIView(ViewSet):
         except DocumentModel.DoesNotExist:
             return Response({"error": "Document not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        file_bytes = seaweed_service.get_file(doc.seaweed_file_id)
+        file_bytes = seaweed_service_inst.get_file(doc.seaweed_file_id)
 
         if not file_bytes:
             return Response({"error": "Failed to retrieve file"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

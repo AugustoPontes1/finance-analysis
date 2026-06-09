@@ -2,4 +2,4 @@ from django.apps import AppConfig
 
 
 class ValuesAiExtractionConfig(AppConfig):
-    name = 'apps.values_ai_extraction'
+    name = 'backend.apps.values_ai_extraction'
