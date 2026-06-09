@@ -24,6 +24,7 @@ pillow==12.2.0
 protobuf==7.34.1
 pyarrow==23.0.1
 pydeck==0.9.1
+pypdf==6.13.1
 python-dateutil==2.9.0.post0
 referencing==0.37.0
 requests==2.33.1
