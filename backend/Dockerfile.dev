@@ -26,8 +26,8 @@ RUN pip install -r requirements.txt
 COPY . /app/
 
 # Copy entrypoint script
-COPY entrypoint.sh /app/
-RUN chmod +x /app/entrypoint.sh
+COPY entrypoint.dev.sh /app/
+RUN chmod +x /app/entrypoint.dev.sh
 
 # Port for Django dev server
 ENV DJANGO_APP_PORT=8080
@@ -36,4 +36,4 @@ ENV PORT=${DJANGO_APP_PORT}
 EXPOSE $DJANGO_APP_PORT
 
 # Entrypoint that runs migrations before starting the server
-ENTRYPOINT ["/app/entrypoint.sh"]
+ENTRYPOINT ["/app/entrypoint.dev.sh"]

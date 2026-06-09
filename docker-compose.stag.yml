@@ -1,0 +1,191 @@
+version: '3.9'
+
+# Deploy with: docker stack deploy -c docker-compose.stag.yml finance-stag
+# Or standalone scale: docker compose -f docker-compose.stag.yml up --scale django=2
+
+services:
+  # ========== DJANGO APP (Gunicorn + uvicorn workers) ==========
+  django:
+    build:
+      context: backend
+      dockerfile: Dockerfile.stag
+    ports:
+      - "8080:8080"
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: '0.75'
+          memory: 384M
+        reservations:
+          cpus: '0.25'
+          memory: 192M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+    environment:
+      - DJANGO_APP_PORT=8080
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DEBUG=False
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS}
+      - SEAWEEDFS_MASTER_URL=http://seaweed-master:9333
+      - SEAWEEDFS_VOLUME_URL=http://seaweed-volume:8080
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
+      - SECRET_KEY=${SECRET_KEY}
+      - GUNICORN_WORKERS=2
+    depends_on:
+      postgres:
+        condition: service_healthy
+      seaweed-master:
+        condition: service_healthy
+      seaweed-volume:
+        condition: service_healthy
+    networks:
+      - finance-network-stag
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ========== STREAMLIT FRONTEND ==========
+  streamlit:
+    build:
+      context: frontend
+      dockerfile: frontend/Dockerfile.stag
+    ports:
+      - "8502:8502"
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+    environment:
+      - API_BASE_URL=http://django:8080
+    depends_on:
+      - django
+    networks:
+      - finance-network-stag
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8502/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # ========== POSTGRESQL ==========
+  postgres:
+    image: postgres:15-alpine
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+    volumes:
+      - postgres_data_stag:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    networks:
+      - finance-network-stag
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ========== SEAWEEDFS MASTER ==========
+  seaweed-master:
+    image: chrislusf/seaweedfs:latest
+    user: root
+    command: >
+      master
+      -ip=seaweed-master
+      -ip.bind=0.0.0.0
+      -port=9333
+      -mdir=/data/seaweed-master
+    volumes:
+      - seaweed_master_stag:/data/seaweed-master
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+      restart_policy:
+        condition: on-failure
+    networks:
+      - finance-network-stag
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9333/dir/status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ========== SEAWEEDFS VOLUME ==========
+  seaweed-volume:
+    image: chrislusf/seaweedfs:latest
+    user: root
+    command: >
+      volume
+      -ip=seaweed-volume
+      -ip.bind=0.0.0.0
+      -port=8080
+      -master=seaweed-master:9333
+      -dir=/data/seaweed-volume
+      -mserver=seaweed-master:9333
+    volumes:
+      - seaweed_volume_stag:/data/seaweed-volume
+    depends_on:
+      - seaweed-master
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+      restart_policy:
+        condition: on-failure
+    networks:
+      - finance-network-stag
+    environment:
+      - WEED_MASTER=seaweed-master:9333
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/status"]
+      interval: 45s
+      timeout: 35s
+      retries: 10
+      start_period: 50s
+
+volumes:
+  postgres_data_stag:
+  seaweed_master_stag:
+  seaweed_volume_stag:
+
+networks:
+  finance-network-stag:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/24
+          gateway: 172.21.0.1

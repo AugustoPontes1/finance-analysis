@@ -5,8 +5,8 @@ services:
   # ========== DJANGO APP ==========
   django:
     build:
-      context: .
-      dockerfile: Dockerfile.dev
+      context: backend
+      dockerfile: backend/Dockerfile.dev
       args:
         APP_PORT: ${DJANGO_APP_PORT}
     container_name: finance-analysis-django
@@ -26,6 +26,7 @@ services:
       - SEAWEEDFS_VOLUME_URL=http://seaweed-volume:8080
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/finance_analysis
       - SECRET_KEY=${SECRET_KEY}
+      - PYTHONPATH=/app/backend
     depends_on:
       postgres:
         condition: service_healthy
@@ -37,6 +38,22 @@ services:
       - finance-network-dev
     stdin_open: true
     tty: true
+
+  streamlit:
+    build:
+      context: frontend
+      dockerfile: frontend/Dockerfile.dev
+    container_name: finance-analysis-streamlit
+    volumes:
+      - .:/app                     # hot-reload: edits reflect instantly
+    ports:
+      - "8501:8501"
+    environment:
+      - API_BASE_URL=http://django:${DJANGO_APP_PORT}
+    depends_on:
+      - django
+    networks:
+      - finance-network-dev
 
   # ========== POSTGRESQL DATABASE ==========
   postgres:
@@ -65,12 +82,15 @@ services:
     user: root
     ports:
       - "9333:9333"
+    entrypoint: ["/bin/sh", "-c"]
     command: >
-      master
+      "mkdir -p /data/seaweed-master &&
+      chmod 777 /data/seaweed-master &&
+      weed master
       -ip=seaweed-master
       -ip.bind=0.0.0.0
       -port=9333
-      -mdir=/data/seaweed-master
+      -mdir=/data/seaweed-master"
     volumes:
       - ./data/seaweed-master:/data/seaweed-master
     networks:
@@ -89,14 +109,17 @@ services:
     ports:
       - "8080:8080"
       - "18080:18080"
+    entrypoint: ["/bin/sh", "-c"]
     command: >
-      volume
+      "mkdir -p /data/seaweed-volume &&
+      chmod 777 /data/seaweed-volume &&
+      weed volume
       -ip=seaweed-volume
       -ip.bind=0.0.0.0
       -port=8080
       -master=seaweed-master:9333
       -dir=/data/seaweed-volume
-      -mserver=seaweed-master:9333
+      -mserver=seaweed-master:9333"
     volumes:
       - ./data/seaweed-volume:/data/seaweed-volume
     depends_on:
