@@ -5,7 +5,7 @@ services:
   # ========== DJANGO APP ==========
   django:
     build:
-      context: backend
+      context: .
       dockerfile: backend/Dockerfile.dev
       args:
         APP_PORT: ${DJANGO_APP_PORT}
@@ -18,15 +18,18 @@ services:
     environment:
       - PORT=${DJANGO_APP_PORT}
       - DJANGO_APP_PORT=${DJANGO_APP_PORT}
-      - DB_HOST=postgres
-      - DB_PORT=5432
       - DEBUG=True
       - ALLOWED_HOSTS=localhost,127.0.0.1,django
-      - SEAWEEDFS_MASTER_URL=http://seaweed-master:9333
-      - SEAWEEDFS_VOLUME_URL=http://seaweed-volume:8080
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/finance_analysis
       - SECRET_KEY=${SECRET_KEY}
       - PYTHONPATH=/app/backend
+      - DB_ENGINE=django.db.backends.postgresql
+      - DB_NAME=finance_analysis
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - SEAWEEDFS_MASTER_URL=http://seaweed-master:9333
+      - SEAWEEDFS_VOLUME_URL=http://seaweed-volume:8080
     depends_on:
       postgres:
         condition: service_healthy
@@ -41,7 +44,7 @@ services:
 
   streamlit:
     build:
-      context: frontend
+      context: .
       dockerfile: frontend/Dockerfile.dev
     container_name: finance-analysis-streamlit
     volumes:
@@ -49,7 +52,8 @@ services:
     ports:
       - "8501:8501"
     environment:
-      - API_BASE_URL=http://django:${DJANGO_APP_PORT}
+      - API_BASE=http://django:${DJANGO_APP_PORT}
+      - PYTHONPATH=/app
     depends_on:
       - django
     networks:

@@ -17,12 +17,12 @@ RUN pip install --upgrade pip
 COPY requirements.txt /app/
 RUN pip install -r requirements.txt gunicorn uvicorn[standard]
 
-COPY . /app/
+COPY backend /app/
 
-COPY entrypoint.stag.sh /app/
+COPY backend/entrypoint.stag.sh /app/
 RUN chmod +x /app/entrypoint.stag.sh
 
 ENV DJANGO_APP_PORT=8080
 EXPOSE 8080
 
-ENTRYPOINT ["/app/entrypoint.stag.sh"]
+ENTRYPOINT ["/app/backend/entrypoint.stag.sh"]
