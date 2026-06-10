@@ -15,11 +15,14 @@ Document:
 
 
 class RemoteLLMService(BaseLLMService):
+    """Calls any OpenAI-compatible remote LLM (OpenAI, Groq, Mistral, Anthropic, etc.)."""
+
     def __init__(self):
+        """Read connection config from LLM_REMOTE_URL, LLM_REMOTE_API_KEY, LLM_REMOTE_MODEL."""
         self.url = os.environ.get("LLM_REMOTE_URL")
         self.api_key = os.environ.get("LLM_REMOTE_API_KEY")
         self.model = os.environ.get("LLM_REMOTE_MODEL")
-    
+
     def extract(self, text: str) -> list[dict]:
         response = requests.post(
             self.url,

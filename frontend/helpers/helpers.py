@@ -5,9 +5,7 @@ API_BASE = os.getenv("API_BASE")
 
 
 class FileHelper:
-    """
-    
-    """
+    """HTTP client for the Finance Analysis API endpoints."""
     
     def upload_file(file, custom: bool = False) -> dict:
         params = {"custom": "true"} if custom else {}

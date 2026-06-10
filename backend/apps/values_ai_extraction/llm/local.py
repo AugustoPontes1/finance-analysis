@@ -15,10 +15,13 @@ Document:
 """
 
 class LocalLLMService(BaseLLMService):
+    """Calls a locally-running Ollama model via its generate API."""
+
     def __init__(self):
+        """Read connection config from LLM_MODEL_URL and LLM_MODEL_NAME."""
         self.url = os.environ.get("LLM_MODEL_URL")
         self.model = os.environ.get("LLM_MODEL_NAME")
-    
+
     def extract(self, text: str) -> dict[dict]:
         response = requests.post(self.url, json ={
             "model": self.model,
