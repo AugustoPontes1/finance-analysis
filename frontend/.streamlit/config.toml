@@ -5,3 +5,6 @@ headless = true # disables "Deploy" button, required in containers
 
 [browser]
 gatherUsageStats = false # no telemetry sent to Streamlit
+
+[logger]
+level = "DEBUG"
