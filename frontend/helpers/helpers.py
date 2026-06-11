@@ -33,4 +33,4 @@ class FileHelper:
     def delete_document(doc_id: int) -> dict:
         resp = requests.delete(f"{API_BASE}/values_extraction/remove_file/v1/?pk={doc_id}")
         resp.raise_for_status()
-        return resp.json()
+        return resp.json() if resp.content else {}

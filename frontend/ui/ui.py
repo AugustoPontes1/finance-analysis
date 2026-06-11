@@ -57,18 +57,20 @@ doc_id_input = st.number_input(
 )
 
 if st.button("Run AI Extraction"):
-    with st.spinner("Analyzing with LLM..."):
-        analysis = FileHelper.analyze_document(int(doc_id_input))
-    
-    st.success("Done!")
-    items = analysis.get("extracted_items", [])
-    
-    if isinstance(items, list):
-        st.subheader("Extracted Items")
-        for item in items:
-            st.write(item)
-    else:
-        st.json(items)
+    try:
+        with st.spinner("Analyzing with LLM..."):
+            analysis = FileHelper.analyze_document(int(doc_id_input))
+        st.success("Done!")
+        items = analysis.get("extracted_items", [])
+        if isinstance(items, list):
+            st.subheader("Extracted Items")
+            for item in items:
+                st.write(item)
+        else:
+            st.json(items)
+    except Exception as e:
+        st.error(f"Failed to retrieve data: {e}")
+
 
 # Delete document
 st.divider()
@@ -76,6 +78,9 @@ st.header("Remove Document")
 
 del_id = st.number_input("Document ID to delete", min_value=1, step=1)
 if st.button("Delete", type="primary"):
-    with st.spinner("Deleting..."):
-        FileHelper.delete_document(int(del_id))
-    st.success(f"Document {del_id} deleted.")
+    try:
+        with st.spinner("Deleting..."):
+            FileHelper.delete_document(int(del_id))
+        st.success(f"Document {del_id} deleted.")
+    except Exception as e:
+        st.error(f"Failed to delete document {del_id}: {e}")

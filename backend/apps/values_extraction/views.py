@@ -190,7 +190,7 @@ class DocumentExctractionAPIView(ViewSet):
         """
         try:
             doc = DocumentModel.objects.get(pk=pk)
-            
+
             seaweed_service.delete_file(str(doc.id))
             doc.delete()
             
@@ -201,7 +201,8 @@ class DocumentExctractionAPIView(ViewSet):
 
         except DocumentModel.DoesNotExist:
             return Response(
-                {"error": "Document not fiound"}
+                {"error": "Document not found"},
+                status=status.HTTP_404_NOT_FOUND
             )
 
     @action(detail=True, methods=['put'])
