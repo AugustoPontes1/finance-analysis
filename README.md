@@ -43,7 +43,9 @@ finance-analysis/
 │   │   │   │   └── factory.py          # Selects LLM based on LLM_PROVIDER env var
 │   │   │   ├── views.py                # analyze_document endpoint
 │   │   │   └── urls.py
-│   │   └── seaweed_service/            # SeaweedFS client
+│   │   └── seaweed_service/            # SeaweedFS client (Python package)
+│   │       ├── __init__.py
+│   │       └── seaweed_service.py
 │   ├── configs/                        # Django settings and URL configuration
 │   ├── Dockerfile.dev
 │   ├── Dockerfile.stag
@@ -59,11 +61,25 @@ finance-analysis/
 │   ├── Dockerfile.dev
 │   ├── Dockerfile.stag
 │   └── Dockerfile.prod
+├── terraform/
+│   ├── swarm-architecture/             # Terraform config for Docker Swarm VMs
+│   │   ├── main.tf
+│   │   ├── variables.tf
+│   │   ├── outputs.tf
+│   │   └── versions.tf
+│   └── k3s-architecture/               # Terraform config for K3S cluster VMs
+│       ├── main.tf
+│       ├── variables.tf
+│       ├── outputs.tf
+│       └── versions.tf
 ├── manage.py
 ├── requirements.txt
+├── generate_hash_key.py                # Utility to generate a Django SECRET_KEY
 ├── docker-compose.dev.yml
-├── docker-compose.stag.yml
+├── docker-compose.stag.yml             # Staging: Gunicorn + 2 Django replicas
 ├── docker-compose.prod.yml
+├── docker-compose.llmcpu.yml           # Ollama sidecar — CPU-only hosts
+├── docker-compose.llmgpu.yml           # Ollama sidecar — GPU-enabled hosts
 └── Makefile
 ```
 
@@ -89,13 +105,18 @@ finance-analysis/
    # Edit .env with your values
    ```
 
-3. **Start the development environment**
+3. **Generate a secret key** (if not using `.env.example` defaults)
+   ```bash
+   python generate_hash_key.py
+   ```
+
+4. **Start the development environment**
    ```bash
    make up           # Linux
    make MAC=true up  # macOS
    ```
 
-4. **Access the services**
+5. **Access the services**
    - Streamlit UI: http://localhost:8501
    - Django API: http://localhost:`DJANGO_APP_PORT`
    - SeaweedFS admin: http://localhost:18080
@@ -191,7 +212,7 @@ POST /values_ai_extraction/analyze_document/<id>/v1/
 
 ```env
 # Django
-SECRET_KEY=your-secret-key
+SECRET_KEY=your-secret-key        # generate with: python generate_hash_key.py
 DEBUG=True
 ALLOWED_HOSTS=localhost,127.0.0.1,django
 DJANGO_APP_PORT=8081
@@ -224,6 +245,20 @@ LLM_MODEL_URL=http://localhost:11434/api/generate
 LLM_MODEL_NAME=llama3.2
 ```
 
+### Running Ollama Locally
+
+Two dedicated compose files are available for running Ollama as a sidecar alongside the dev stack:
+
+```bash
+# CPU-only host (homelab, no GPU)
+docker compose -f docker-compose.dev.yml -f docker-compose.llmcpu.yml up -d
+
+# GPU-enabled host (desktop with NVIDIA GPU)
+docker compose -f docker-compose.dev.yml -f docker-compose.llmgpu.yml up -d
+```
+
+Set `LLM_PROVIDER=local` and `LLM_MODEL_URL=http://ollama:11434/api/generate` in `.env` to route extraction requests to the local Ollama container.
+
 ### Supported Remote LLM Providers
 
 | Provider  | `LLM_REMOTE_URL`                                   | Model example          |
@@ -251,12 +286,34 @@ make shell             # Open Django shell (manage.py shell)
 make psql              # Access PostgreSQL
 make test              # Run tests
 make test-coverage     # Run tests with coverage report
-make clean             # Stop containers
-make clean-all         # Stop containers and remove volumes + images
+make clean             # Stop containers (volumes are preserved)
+make clean-all         # Stop containers and remove volumes + images (destructive)
 make build             # Build Docker images
+make install-compose   # Install Docker Compose v2 plugin
 ```
 
 > Append `MAC=true` on macOS: `make MAC=true up`
+
+## Infrastructure (Terraform)
+
+The `terraform/` directory contains Proxmox VM provisioning configs for two deployment topologies, both using the `bpg/proxmox` provider.
+
+| Directory | Purpose |
+|---|---|
+| `swarm-architecture/` | HAProxy LXC + Docker Swarm manager + workers (maps to existing VMs 100–104) |
+| `k3s-architecture/` | HAProxy LXC + K3S HA control plane + workers (new VMs starting at ID 200) |
+
+```bash
+cd terraform/swarm-architecture   # or k3s-architecture
+cp terraform.tfvars.example terraform.tfvars   # fill in your values
+terraform init
+terraform plan
+terraform apply
+```
+
+> Sensitive values (`proxmox_api_token`, `vm_password`) must go in `terraform.tfvars`, which should be git-ignored and never committed.
+
+---
 
 ## Architecture
 
@@ -276,6 +333,12 @@ make build             # Build Docker images
 - All services share `finance-network-dev` (bridge)
 - Streamlit reaches Django via `http://django:<DJANGO_APP_PORT>` (internal DNS)
 - `PYTHONPATH=/app` is set in the Streamlit container so `frontend.*` imports resolve correctly
+
+### Staging Environment
+`docker-compose.stag.yml` mirrors a production-like setup:
+- Django runs under **Gunicorn + uvicorn workers** with **2 replicas** and resource limits
+- All services have healthchecks and `restart_policy: on-failure`
+- Uses a dedicated `finance-network-stag` bridge (`172.21.0.0/24`)
 
 ## Troubleshooting
 
