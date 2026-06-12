@@ -109,4 +109,12 @@ clean-all:
 		echo "Cancelled"; \
 	fi
 
+up-llmgpu-mode:
+	@echo "Up LLM Gpu Mode"
+	$(COMPOSE) -f docker-compose.llmgpu.yml up
+
+up-llmcpu-mode:
+	@echo "Up LLM CPU Mode"
+	$(COMPOSE) -f docker-compose.llmcpu.yml up
+
 .DEFAULT_GOAL := help
