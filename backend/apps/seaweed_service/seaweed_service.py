@@ -28,10 +28,10 @@ class SeaweedFSService:
             
             # 3. Upload the file to the volumer server
             files = {'file': (filename, file_obj)}
-            upload_url = f"http://{volume_server}/file_id"
+            upload_url = f"http://{volume_server}/{file_id}"
             upload_response = requests.post(upload_url, files=files)
             
-            if upload_response.status_code == 201:
+            if upload_response.status_code == 200:
                 logger.info(f"File uploaded successfully: {file_id}")
                 return file_id
             else:
