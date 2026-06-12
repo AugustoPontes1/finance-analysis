@@ -5,6 +5,7 @@ from rest_framework import status
 from rest_framework.viewsets import ViewSet
 import mimetypes
 from io import BytesIO
+import base64
 
 from backend.apps.values_extraction.serializers import DocumentSerializer
 from backend.apps.values_extraction.models import DocumentModel
@@ -47,7 +48,7 @@ class DocumentExctractionAPIView(ViewSet):
         # If not custom, make the upload directly to the Seaweed and DB
         if not custom:
             # 1. Upload to Seaweed
-            seaweed_id = SeaweedFSService.upload_file(file, file.name)
+            seaweed_id = seaweed_service.upload_file(file, filename=file.name)
             
             if not seaweed_id:
                 return Response(
@@ -64,6 +65,7 @@ class DocumentExctractionAPIView(ViewSet):
             )
             
             serializer = DocumentSerializer(doc)
+            print(seaweed_id, doc, serializer)
             return Response(
                 {
                     "status": "File uploaded successfully",
@@ -77,7 +79,7 @@ class DocumentExctractionAPIView(ViewSet):
         request.session['temp_file'] = {
             'name': file.name,
             'size': file.size,
-            'content': file.read() # Save the content during the session
+            'content': base64.b64encode(file.read()).decode('utf-8') # Save the content during the session
         }
         request.session.modified = True
 
@@ -155,7 +157,7 @@ class DocumentExctractionAPIView(ViewSet):
         )
 
         # Upload the file on Seaweed
-        file_obj = BytesIO(temp_file_data['content'])
+        file_obj = BytesIO(base64.b64decode(temp_file_data['content']))
         
         seaweed_id = seaweed_service.upload_file(
             file_obj=file_obj,
