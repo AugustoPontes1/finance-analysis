@@ -1,8 +1,11 @@
 import os
 import json
+import logging
 import requests
 
 from backend.apps.values_ai_extraction.llm.base import BaseLLMService
+
+logger = logging.getLogger(__name__)
 
 PROMPT = """You are a financial document analyzer.
 Extract ALL label-value pairs you can find in the document below.
@@ -24,27 +27,50 @@ class RemoteLLMService(BaseLLMService):
         self.model = os.environ.get("LLM_REMOTE_MODEL")
 
     def extract(self, text: str) -> list[dict]:
-        response = requests.post(
-            self.url,
-            headers={
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-                "x-api-key": self.api_key, # For Claude only
-                "anthropic-version": "2026-06-01" # For claude only
-            },
-            json={
-                "model": self.model,
-                "messages": [{"role": "user", "content": PROMPT.format(text=text)}],
-                "max_tokens": 1024
-            }
-        )
-        body = response.json()
+        logger.debug(f"RemoteLLMService.extract: model={self.model}, url={self.url}, text_len={len(text)}")
+        try:
+            response = requests.post(
+                self.url,
+                headers={
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json",
+                    "x-api-key": self.api_key,
+                    "anthropic-version": "2026-06-01"
+                },
+                json={
+                    "model": self.model,
+                    "messages": [{"role": "user", "content": PROMPT.format(text=text)}],
+                    "max_tokens": 1024
+                }
+            )
+            response.raise_for_status()
+            body = response.json()
+            logger.debug(f"RemoteLLM response keys: {list(body.keys())}")
 
-        # OpenAI-compatibility format
-        if "choices" in body:
-            content = body["choices"][0]["message"]["content"]
-        # Claude-compatibility format
-        else:
-            content = body["content"][0]["text"]
-        
-        return json.loads(content)
+            if "choices" in body:
+                content = body["choices"][0]["message"]["content"]
+            else:
+                content = body["content"][0]["text"]
+
+            logger.debug(f"RemoteLLM raw content ({len(content)} chars): {content[:500]}")
+
+            if not content.strip():
+                logger.warning("RemoteLLM returned empty content")
+                return []
+
+            cleaned = content.strip()
+            if cleaned.startswith("```"):
+                cleaned = cleaned.split("```")[1]
+                if cleaned.startswith("json"):
+                    cleaned = cleaned[4:]
+                cleaned = cleaned.strip()
+
+            result = json.loads(cleaned)
+            logger.info(f"RemoteLLM extraction complete: {len(result)} items")
+            return result
+        except json.JSONDecodeError as e:
+            logger.error(f"RemoteLLM returned invalid JSON: {e} | raw: {content[:300]}")
+            return []
+        except Exception as e:
+            logger.error(f"RemoteLLMService.extract failed: {e}", exc_info=True)
+            raise

@@ -1,8 +1,11 @@
 import os
 import json
+import logging
 import requests
 
 from backend.apps.values_ai_extraction.llm.base import BaseLLMService
+
+logger = logging.getLogger(__name__)
 
 PROMPT = """"
 You are a financial document analyzer.
@@ -23,10 +26,35 @@ class LocalLLMService(BaseLLMService):
         self.model = os.environ.get("LLM_MODEL_NAME")
 
     def extract(self, text: str) -> dict[dict]:
-        response = requests.post(self.url, json ={
-            "model": self.model,
-            "prompt": PROMPT.format(text=text),
-            "stream": False
-        })
+        logger.debug(f"LocalLLMService.extract: model={self.model}, url={self.url}, text_len={len(text)}")
+        try:
+            response = requests.post(self.url, json={
+                "model": self.model,
+                "prompt": PROMPT.format(text=text),
+                "stream": False
+            })
+            response.raise_for_status()
+            raw = response.json().get("response", "")
+            logger.debug(f"LocalLLM raw response ({len(raw)} chars): {raw[:500]}")
 
-        return json.loads(response.json()["response"])
+            if not raw.strip():
+                logger.warning("LocalLLM returned empty response")
+                return []
+
+            # Strip markdown code fences if present (```json ... ```)
+            cleaned = raw.strip()
+            if cleaned.startswith("```"):
+                cleaned = cleaned.split("```")[1]
+                if cleaned.startswith("json"):
+                    cleaned = cleaned[4:]
+                cleaned = cleaned.strip()
+
+            result = json.loads(cleaned)
+            logger.info(f"LocalLLM extraction complete: {len(result)} items")
+            return result
+        except json.JSONDecodeError as e:
+            logger.error(f"LocalLLM returned invalid JSON: {e} | raw: {raw[:300]}")
+            return []
+        except Exception as e:
+            logger.error(f"LocalLLMService.extract failed: {e}", exc_info=True)
+            raise
