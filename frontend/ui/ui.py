@@ -87,17 +87,22 @@ doc_id_input = st.number_input(
 if st.button("Run AI Extraction"):
     logger.info(f"AI extraction triggered for doc_id={doc_id_input}")
     try:
-        with st.spinner("Analyzing with LLM..."):
+        with st.spinner("Analyzing with LLM... (this may take a minute)"):
             analysis = FileHelper.analyze_document(int(doc_id_input))
         logger.info(f"AI extraction complete for doc_id={doc_id_input}")
-        st.success("Done!")
+
+        warning = analysis.get("warning")
+        if warning:
+            st.warning(warning)
+
         items = analysis.get("extracted_items", [])
-        if isinstance(items, list):
-            st.subheader("Extracted Items")
-            for item in items:
-                st.write(item)
+        st.subheader("Extracted Items")
+        if not items:
+            st.info("No items were extracted from this document.")
         else:
-            st.json(items)
+            import pandas as pd
+            st.success(f"{len(items)} item(s) extracted.")
+            st.dataframe(pd.DataFrame(items), use_container_width=True)
     except Exception as e:
         logger.error(f"AI extraction failed for doc_id={doc_id_input}: {e}", exc_info=True)
         st.error(f"Failed to retrieve data: {e}")
