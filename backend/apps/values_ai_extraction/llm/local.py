@@ -1,11 +1,39 @@
 import os
 import json
 import logging
+import re
 import requests
 
 from backend.apps.values_ai_extraction.llm.base import BaseLLMService
 
 logger = logging.getLogger(__name__)
+
+
+def _parse_llm_json(raw: str):
+    """Extract a JSON array from an LLM response that may have surrounding text or code fences."""
+    # 1. Direct parse
+    try:
+        return json.loads(raw.strip())
+    except json.JSONDecodeError:
+        pass
+
+    # 2. Extract from ```...``` or ```json...``` fences
+    fence_match = re.search(r"```(?:json)?\s*([\s\S]*?)```", raw)
+    if fence_match:
+        try:
+            return json.loads(fence_match.group(1).strip())
+        except json.JSONDecodeError:
+            pass
+
+    # 3. Grab the first [...] block greedily
+    array_match = re.search(r"\[[\s\S]*\]", raw)
+    if array_match:
+        try:
+            return json.loads(array_match.group(0))
+        except json.JSONDecodeError:
+            pass
+
+    return None
 
 PROMPT = """"
 You are a financial document analyzer.
@@ -41,20 +69,13 @@ class LocalLLMService(BaseLLMService):
                 logger.warning("LocalLLM returned empty response")
                 return []
 
-            # Strip markdown code fences if present (```json ... ```)
-            cleaned = raw.strip()
-            if cleaned.startswith("```"):
-                cleaned = cleaned.split("```")[1]
-                if cleaned.startswith("json"):
-                    cleaned = cleaned[4:]
-                cleaned = cleaned.strip()
+            result = _parse_llm_json(raw)
+            if result is None:
+                logger.error(f"LocalLLM returned unparseable response | raw: {raw[:400]}")
+                return []
 
-            result = json.loads(cleaned)
             logger.info(f"LocalLLM extraction complete: {len(result)} items")
             return result
-        except json.JSONDecodeError as e:
-            logger.error(f"LocalLLM returned invalid JSON: {e} | raw: {raw[:300]}")
-            return []
         except Exception as e:
             logger.error(f"LocalLLMService.extract failed: {e}", exc_info=True)
             raise

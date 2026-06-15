@@ -1,9 +1,9 @@
 import os
-import json
 import logging
 import requests
 
 from backend.apps.values_ai_extraction.llm.base import BaseLLMService
+from backend.apps.values_ai_extraction.llm.local import _parse_llm_json
 
 logger = logging.getLogger(__name__)
 
@@ -58,19 +58,13 @@ class RemoteLLMService(BaseLLMService):
                 logger.warning("RemoteLLM returned empty content")
                 return []
 
-            cleaned = content.strip()
-            if cleaned.startswith("```"):
-                cleaned = cleaned.split("```")[1]
-                if cleaned.startswith("json"):
-                    cleaned = cleaned[4:]
-                cleaned = cleaned.strip()
+            result = _parse_llm_json(content)
+            if result is None:
+                logger.error(f"RemoteLLM returned unparseable response | raw: {content[:400]}")
+                return []
 
-            result = json.loads(cleaned)
             logger.info(f"RemoteLLM extraction complete: {len(result)} items")
             return result
-        except json.JSONDecodeError as e:
-            logger.error(f"RemoteLLM returned invalid JSON: {e} | raw: {content[:300]}")
-            return []
         except Exception as e:
             logger.error(f"RemoteLLMService.extract failed: {e}", exc_info=True)
             raise
