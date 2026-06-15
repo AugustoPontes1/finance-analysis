@@ -30,6 +30,12 @@ services:
       - DB_PORT=5432
       - SEAWEEDFS_MASTER_URL=http://seaweed-master:9333
       - SEAWEEDFS_VOLUME_URL=http://seaweed-volume:8080
+      - LLM_PROVIDER=${LLM_PROVIDER:-remote}
+      - LLM_MODEL_URL=${LLM_MODEL_URL}
+      - LLM_MODEL_NAME=${LLM_MODEL_NAME}
+      - LLM_REMOTE_URL=${LLM_REMOTE_URL}
+      - LLM_REMOTE_API_KEY=${LLM_REMOTE_API_KEY}
+      - LLM_REMOTE_MODEL=${LLM_REMOTE_MODEL}
     depends_on:
       postgres:
         condition: service_healthy

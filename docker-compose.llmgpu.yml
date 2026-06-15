@@ -5,12 +5,43 @@ services:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
-    # GPU configs:
+    networks:
+      - finance-network-dev
     deploy:
       resources:
         reservations:
           devices:
             - capabilities: [gpu]
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list | grep -q ${LLM_MODEL_NAME:-llama3}"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 10s
+
+  ollama-init:
+    image: ollama/ollama
+    depends_on:
+      - ollama
+    volumes:
+      - ollama_data:/root/.ollama
+    entrypoint: ["/bin/sh", "-c"]
+    command: >
+      "echo 'Waiting for Ollama...' &&
+      until ollama list > /dev/null 2>&1; do sleep 2; done &&
+      echo 'Pulling ${LLM_MODEL_NAME:-llama3}...' &&
+      ollama pull ${LLM_MODEL_NAME:-llama3} &&
+      echo 'Done.'"
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    networks:
+      - finance-network-dev
+    restart: "no"
 
 volumes:
   ollama_data:
+
+networks:
+  finance-network-dev:
+    external: true
+    name: finance-analysis_finance-network-dev
