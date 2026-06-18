@@ -95,14 +95,12 @@ if st.button("Run AI Extraction"):
         if warning:
             st.warning(warning)
 
-        items = analysis.get("extracted_items", [])
-        st.subheader("Extracted Items")
-        if not items:
-            st.info("No items were extracted from this document.")
+        summary = analysis.get("summary", "")
+        st.subheader("Analysis")
+        if not summary:
+            st.info("No content was extracted from this document.")
         else:
-            import pandas as pd
-            st.success(f"{len(items)} item(s) extracted.")
-            st.dataframe(pd.DataFrame(items), use_container_width=True)
+            st.markdown(summary)
     except Exception as e:
         logger.error(f"AI extraction failed for doc_id={doc_id_input}: {e}", exc_info=True)
         st.error(f"Failed to retrieve data: {e}")

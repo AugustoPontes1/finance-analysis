@@ -9,38 +9,10 @@ from backend.apps.values_ai_extraction.llm.base import BaseLLMService
 logger = logging.getLogger(__name__)
 
 
-def _parse_llm_json(raw: str):
-    """Extract a JSON array from an LLM response that may have surrounding text or code fences."""
-    # 1. Direct parse
-    try:
-        return json.loads(raw.strip())
-    except json.JSONDecodeError:
-        pass
-
-    # 2. Extract from ```...``` or ```json...``` fences
-    fence_match = re.search(r"```(?:json)?\s*([\s\S]*?)```", raw)
-    if fence_match:
-        try:
-            return json.loads(fence_match.group(1).strip())
-        except json.JSONDecodeError:
-            pass
-
-    # 3. Grab the first [...] block greedily
-    array_match = re.search(r"\[[\s\S]*\]", raw)
-    if array_match:
-        try:
-            return json.loads(array_match.group(0))
-        except json.JSONDecodeError:
-            pass
-
-    return None
-
 PROMPT = """"
 You are a financial document analyzer.
-Extract ALL label-value pairs you can find in the document below.
-Labels are names of services, stores, or descriptions. Values are monetary amounts.
-Return ONLY a valid JSON array, nothing else. Example:
-[{{"label": "Uber", "value": "R$ 20.50"}}, {{"label": "iFood", "value": "R$ 40.30"}}]
+Analyze the document below and provide a clear, natural language summary
+of all financial items, amounts, and insights you find.
 Document:
 {text}
 """
@@ -69,13 +41,8 @@ class LocalLLMService(BaseLLMService):
                 logger.warning("LocalLLM returned empty response")
                 return []
 
-            result = _parse_llm_json(raw)
-            if result is None:
-                logger.error(f"LocalLLM returned unparseable response | raw: {raw[:400]}")
-                return []
-
-            logger.info(f"LocalLLM extraction complete: {len(result)} items")
-            return result
+            logger.info(f"LocalLLM extraction complete: {len(raw)} chars")
+            return raw
         except Exception as e:
             logger.error(f"LocalLLMService.extract failed: {e}", exc_info=True)
             raise

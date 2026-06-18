@@ -3,7 +3,6 @@ import logging
 import requests
 
 from backend.apps.values_ai_extraction.llm.base import BaseLLMService
-from backend.apps.values_ai_extraction.llm.local import _parse_llm_json
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +57,7 @@ class RemoteLLMService(BaseLLMService):
                 logger.warning("RemoteLLM returned empty content")
                 return []
 
-            result = _parse_llm_json(content)
+            result = content
             if result is None:
                 logger.error(f"RemoteLLM returned unparseable response | raw: {content[:400]}")
                 return []
