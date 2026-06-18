@@ -1,7 +1,9 @@
 import logging
 
 from frontend.helpers.helpers import FileHelper
+from backend.apps.censor_service import censor
 import streamlit as st
+
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -84,6 +86,12 @@ doc_id_input = st.number_input(
     value=st.session_state.get("doc_id", 1),
 )
 
+col1, col2 = st.columns([2, 1])
+with col1:
+    redact = st.toggle("Redact sensitive information", value=True)
+with col2:
+    lang = st.selectbox("Document language", ["en", "pt"], label_visibility="collapsed")
+
 if st.button("Run AI Extraction"):
     logger.info(f"AI extraction triggered for doc_id={doc_id_input}")
     try:
@@ -95,16 +103,18 @@ if st.button("Run AI Extraction"):
         if warning:
             st.warning(warning)
 
-        summary = analysis.get("summary", "")
-        st.subheader("Analysis")
-        if not summary:
-            st.info("No content was extracted from this document.")
-        else:
-            st.markdown(summary)
+        st.session_state["summary"] = analysis.get("summary", "")
     except Exception as e:
         logger.error(f"AI extraction failed for doc_id={doc_id_input}: {e}", exc_info=True)
         st.error(f"Failed to retrieve data: {e}")
 
+if "summary" in st.session_state:
+    summary = st.session_state["summary"]
+    st.subheader("Analysis")
+    if not summary:
+        st.info("No content was extracted from this document.")
+    else:
+        st.markdown(censor.censor(summary, lang) if redact else summary)
 
 # Delete document
 st.divider()
