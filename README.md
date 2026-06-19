@@ -12,6 +12,7 @@ A full-stack application for financial document analysis and AI-powered data ext
 - **SeaweedFS Integration**: Scalable distributed file storage
 - **RESTful API**: Complete REST API built with Django REST Framework
 - **AI Extraction**: Identify labels and monetary values from any financial document using a local or remote LLM
+- **PII Redaction**: Sensitive information in AI extraction results (names, account numbers, SSNs, credit cards, IBANs) is automatically redacted using Microsoft Presidio before being displayed — with a per-session toggle and language selector (English / Portuguese)
 - **Streamlit UI**: Browser-based interface for uploading documents and triggering AI extraction
 
 ## Tech Stack
@@ -23,11 +24,17 @@ A full-stack application for financial document analysis and AI-powered data ext
 - **Language**: Python 3.13+
 - **Containerization**: Docker + Docker Compose
 - **AI**: Any OpenAI-compatible remote LLM (OpenAI, Groq, Mistral, etc.) or local LLM via Ollama
+- **PII Detection**: Microsoft Presidio (Analyzer + Anonymizer) with spaCy NLP models (`en_core_web_lg`, `pt_core_news_lg`)
+- **Infrastructure**: Terraform (`bpg/proxmox`) — Docker Swarm (staging) and K3s (production) on Proxmox
+- **CI/CD**: GitHub Actions — manual `workflow_dispatch` pipeline for Terraform provisioning
 
 ## Project Structure
 
 ```
 finance-analysis/
+├── .github/
+│   └── workflows/
+│       └── terraform.yml               # Manual Terraform provision workflow (workflow_dispatch)
 ├── backend/
 │   ├── apps/
 │   │   ├── values_extraction/          # Core file management app
@@ -298,10 +305,10 @@ make install-compose   # Install Docker Compose v2 plugin
 
 The `terraform/` directory contains Proxmox VM provisioning configs for two deployment topologies, both using the `bpg/proxmox` provider.
 
-| Directory | Purpose |
-|---|---|
-| `swarm-architecture/` | HAProxy LXC + Docker Swarm manager + workers (maps to existing VMs 100–104) |
-| `k3s-architecture/` | HAProxy LXC + K3S HA control plane + workers (new VMs starting at ID 200) |
+| Directory | Purpose | Environment |
+|---|---|---|
+| `swarm-architecture/` | HAProxy LXC + Docker Swarm manager + workers (VMs 100–104) | Staging |
+| `k3s-architecture/` | HAProxy LXC + K3S HA control plane + workers (VMs 200–212) | Production |
 
 ```bash
 cd terraform/swarm-architecture   # or k3s-architecture
@@ -312,6 +319,33 @@ terraform apply
 ```
 
 > Sensitive values (`proxmox_api_token`, `vm_password`) must go in `terraform.tfvars`, which should be git-ignored and never committed.
+
+---
+
+## CI/CD
+
+Infrastructure provisioning is handled by a **manual** GitHub Actions workflow — nothing runs automatically on branch push.
+
+### Terraform Workflow (`.github/workflows/terraform.yml`)
+
+Triggered manually via **Actions → Terraform → Run workflow** with three input dropdowns:
+
+| Input | Options |
+|---|---|
+| `architecture` | `swarm-architecture` · `k3s-architecture` |
+| `action` | `plan` · `apply` · `destroy` |
+| `environment` | `staging` · `production` |
+
+**Required GitHub secrets:**
+
+| Secret | Description |
+|---|---|
+| `PROXMOX_ENDPOINT` | Proxmox API URL (e.g. `https://192.168.1.10:8006`) |
+| `PROXMOX_API_TOKEN` | Proxmox API token (`user@realm!tokenid=secret`) |
+| `VM_PASSWORD` | Default password for provisioned VMs |
+| `SSH_PUBLIC_KEY` | Public key injected into VM `authorized_keys` |
+
+> The Proxmox API is not internet-facing. A self-hosted GitHub Actions runner on the same LAN (or a VPN tunnel step) is required for the workflow to reach it.
 
 ---
 
@@ -328,6 +362,14 @@ terraform apply
 - `LocalLLMService` calls a local Ollama server
 - `get_llm_service()` (factory) picks which one based on `LLM_PROVIDER`
 - The view retrieves the file from SeaweedFS, extracts its text, and passes it to the LLM
+
+### PII Redaction
+- `presidio-analyzer` detects PII entities in the extracted summary using spaCy NLP
+- `presidio-anonymizer` replaces detected entities with type placeholders (e.g. `<PERSON>`, `<CREDIT_CARD>`)
+- Both engines are initialized once at module level in `ui.py` to avoid reloading on every Streamlit interaction
+- Supported entities: `PERSON`, `EMAIL_ADDRESS`, `PHONE_NUMBER`, `CREDIT_CARD`, `IBAN_CODE`, `US_SSN`, `US_BANK_NUMBER`
+- Supported languages: English (`en_core_web_lg`), Portuguese (`pt_core_news_lg`)
+- Redaction is togglable per session — users can disable it to see the raw LLM output
 
 ### Docker Networking
 - All services share `finance-network-dev` (bridge)
