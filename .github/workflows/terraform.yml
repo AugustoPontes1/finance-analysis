@@ -1,0 +1,39 @@
+name: Terraform
+
+on:
+  workflow_dispatch:
+    inputs:
+      architecture:
+        description: "Which architecture to target"
+        required: true
+        type: choice
+        options: [swarm-architecture, k3s-architecture]
+      action:
+        description: "Terraform action"
+        required: true
+        type: choice
+        options: [plan, apply, destroy]
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options: [staging, production]
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~> 1.3"
+      - run: terraform init
+        working-directory: terraform/${{ inputs.architecture }}
+      - run: terraform ${{ inputs.action }} -auto-approve
+        working-directory: terraform/${{ inputs.architecture }}
+        env:
+          TF_VAR_proxmox_endpoint: ${{ secrets.PROXMOX_ENDPOINT
+          TF_VAR_proxmox_api_token: ${{ secrets.PROXMOX_API_TOKEN }}
+          TF_VAR_vm_password: ${{ secrets.VM_PASSWORD }}
+          TF_VAR_ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
