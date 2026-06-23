@@ -2,8 +2,10 @@ import logging
 
 from frontend.helpers.helpers import FileHelper
 from backend.apps.censor_service import censor
-import streamlit as st
 
+import streamlit as st
+import pandas as pd
+import re
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -36,7 +38,7 @@ if uploaded_file and st.button("Upload"):
             "file_size": uploaded_file.size,
         }
         st.session_state["custom_file_bytes"] = uploaded_file.getvalue()
-        logger.debug(f"Custom flow: preview and file bytes stored in session_state")
+        logger.debug("Custom flow: preview and file bytes stored in session_state")
     else:
         with st.spinner("Uploading..."):
             result = FileHelper.upload_file(uploaded_file, custom=False)
@@ -104,6 +106,7 @@ if st.button("Run AI Extraction"):
             st.warning(warning)
 
         st.session_state["summary"] = analysis.get("summary", "")
+        st.session_state["extracted_items"] = analysis.get("extracted_items", [])   
     except Exception as e:
         logger.error(f"AI extraction failed for doc_id={doc_id_input}: {e}", exc_info=True)
         st.error(f"Failed to retrieve data: {e}")
@@ -115,7 +118,56 @@ if "summary" in st.session_state:
         st.info("No content was extracted from this document.")
     else:
         st.markdown(censor.censor(summary, lang) if redact else summary)
+    
+    # Sheet section
+    st.divider()
+    st.subheader("Items Sheet")
+    
+    # Pre-populate from structure
+    raw_items = st.session_state.get("extracted_items", [])
+    default_df = pd.DataFrame(
+        [{"Label": i.get("label", ""), "Value": i.get("value", "")} for i in raw_items]
+        if raw_items else [{"Label": "", "Value": ""}]
+    )
+    
+    edited_df = st.data_editor(
+        default_df,
+        num_rows="dynamic",
+        use_container_width=True,
+        column_config={
+            "Label": st.column_config.TextColumn("Label", width="large"),
+             "Value": st.column_config.TextColumn("Value", width="medium"),
+        },
+    )
 
+    def parse_value(raw: str) -> float:
+        cleaned = re.sub(r"[^\d,.]", "", str(raw))
+        if "," in cleaned and "." in cleaned:
+            cleaned = cleaned.replace(".", "").replace(",", ".")
+        elif "," in cleaned:
+            cleaned = cleaned.replace(",", ".")
+        try:
+            return float(cleaned)
+        except ValueError:
+            return 0.0
+    
+    total = sum(parse_value(v) for v in edited_df["Value"] if v)
+    
+    col1, col2 = st.columns([3, 1])
+    with col2:
+        st.metric("Total", f"R$ {total:,.2f}")
+    
+    with col1:
+        if st.button("Export Sheet", type="secondary"):
+            csv = edited_df.to_csv(index=False).encode("utf-8")
+            st.download_button(
+                label="Download CSV",
+                data=csv,
+                file_name=f"extraction_{st.session_state.get('doc_id', 'doc')}.csv",
+                mime="text/csv",
+            )
+
+    
 # Delete document
 st.divider()
 st.header("Remove Document")
