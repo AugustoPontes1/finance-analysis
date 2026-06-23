@@ -1,5 +1,12 @@
 # Finance Analysis
 
+[![Dev Tests](https://github.com/AugustoPontes1/finance-analysis/actions/workflows/devtests.yml/badge.svg)](https://github.com/AugustoPontes1/finance-analysis/actions/workflows/devtests.yml)
+[![Release](https://img.shields.io/github/v/release/AugustoPontes1/finance-analysis)](https://github.com/AugustoPontes1/finance-analysis/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/)
+[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
+[![Docker](https://img.shields.io/badge/docker-ready-blue?logo=docker)](https://www.docker.com/)
+
 A full-stack application for financial document analysis and AI-powered data extraction. Users can upload financial documents (PDF, XLSX, CSV), manage them through a REST API, and run LLM-based label/value extraction via a Streamlit UI.
 
 ## Features
