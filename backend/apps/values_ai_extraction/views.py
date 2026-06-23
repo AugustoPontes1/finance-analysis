@@ -74,4 +74,7 @@ class AIExtractionAPIView(ViewSet):
         items = llm.extract(text)
         logger.info(f"LLM extraction complete for doc id={pk}: {len(items)} items extracted")
 
-        return Response({"summary": items}, status=status.HTTP_200_OK)
+        result = llm.extract(text)
+        return Response({"summary": result.get("summary", ""), 
+                        "extracted_items": result.get("items", [])
+                        },status=status.HTTP_200_OK)

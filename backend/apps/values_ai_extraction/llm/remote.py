@@ -1,20 +1,22 @@
 import os
 import logging
 import requests
+import json
 
 from backend.apps.values_ai_extraction.llm.base import BaseLLMService
 
 logger = logging.getLogger(__name__)
 
 PROMPT = """You are a financial document analyzer.
-Extract ALL label-value pairs you can find in the document below.
-Labels are names of services, stores, or descriptions. Values are monetary amounts.
-Return ONLY a valid JSON array, nothing else. Example:
-[{{"label": "Uber", "value": "R$ 20.50"}}, {{"label": "iFood", "value": "R$ 40.30"}}]
+Analyze the document below and return ONLY a valid JSON object with two fields:
+- "summary": a natural language description of all financial items and insights found
+- "items": a JSON array of label-value pairs where labels are names/descriptions and values are monetary amounts
+
+Example:
+{{"summary": "This document shows a transfer of R$ 1,758.91 from Visian Systems...", "items": [{{"label": "Transfer Value", "valu": "Initial Amount", "value": "R$1,774.92"}}]}}
 
 Document:
 {text}"""
-
 
 class RemoteLLMService(BaseLLMService):
     """Calls any OpenAI-compatible remote LLM (OpenAI, Groq, Mistral, Anthropic, etc.)."""
@@ -57,7 +59,7 @@ class RemoteLLMService(BaseLLMService):
                 logger.warning("RemoteLLM returned empty content")
                 return []
 
-            result = content
+            result = json(content)
             if result is None:
                 logger.error(f"RemoteLLM returned unparseable response | raw: {content[:400]}")
                 return []
